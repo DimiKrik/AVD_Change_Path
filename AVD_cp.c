@@ -15,41 +15,76 @@ int main()
   FILE * f;
   FILE * g;
   char path[100];
-
-  char buffer[BUFFER_SIZE],newline[BUFFER_SIZE];
-  int line=2;
+  int i, j = 0, k = 0, n = 0;
+  int flag = 0;
+  char pathname_without_extension[100];
+  char dotAVD_extension[5] = { '.', 'a', 'v', 'd', '\0' };
+  char buffer[BUFFER_SIZE], newline[BUFFER_SIZE];
+  int line = 2;
   int count;
-  
+  char *directory_base, *AVD_name;
+
+  system("clear");
   printf("Enter the full folder path you want to move: ");
   gets(avd_source_path);
-  strcpy(move_system_command, "cp -r ");
+  strcpy(move_system_command, "rsync -ah --info=progress2 ");
   strcat(move_system_command, avd_source_path);
   strcat(move_system_command, " ");
 
-  char *directory_base, *bname;
+  //Getting the basename of the path folder into AVD_name
 
   directory_base = strdup(avd_source_path);
-  bname = basename(directory_base);
+  AVD_name = basename(directory_base);
+
+  // Process to remove .avd extension from the basename
 
   strcat(pathname, avd_source_path);
-  strcat(pathname, ".ini");
 
-  printf("Enter the full destination path: ");
+  for (i = 0; pathname[i] != '\0'; i++)
+    {
+      k = i;
+
+      while (pathname[i] == dotAVD_extension[j])
+        {
+          i++, j++;
+          if (j == strlen(dotAVD_extension))
+            {
+              flag = 1;
+              break;
+            }
+        }
+      j = 0;
+
+      if (flag == 0)
+        i = k;
+      else
+        flag = 0;
+
+      pathname_without_extension[n++] = pathname[i];
+    }
+  pathname_without_extension[n] = '\0';
+
+  // pathname_without_extension is avd_source_path basename without the .avd
+
+  // Enter destination path also moving the .avd folder
+  printf("\nEnter the full destination path: ");
   gets(destination_path);
   strcat(move_system_command, destination_path);
   system(move_system_command);
-  
-  printf("Changing path in %s.ini file\n", bname);
 
-  f = fopen(pathname, "r");
+  strcat(pathname_without_extension, ".ini");
+  // Opening the .ini file in order to change the path of the avd
+  f = fopen(pathname_without_extension, "r");
   g = fopen("temporary_replacement_file.tmp", "w");
-
+  // File check
   if (f == NULL || g == NULL)
     {
       printf("Unable to open file.");
       printf("Please check if the file exist.\n\n");
       exit(EXIT_SUCCESS);
     }
+  // Changing the path inside .ini file
+  printf("\nChanging path in %s.ini file\n", pathname_without_extension);
 
   count = 0;
   while ((fgets(buffer, BUFFER_SIZE, f)) != NULL)
@@ -60,32 +95,33 @@ int main()
           fprintf(g, "%s", "path=");
           fputs(destination_path, g);
           fprintf(g, "/");
-          fputs(bname, g);
-          fprintf(g, ".avd\n");
+          fputs(AVD_name, g);
+          fprintf(g, "\n");
         }
       else
         fputs(buffer, g);
     }
 
-
+  // Closing files
   fclose(f);
   fclose(g);
 
-  printf("Remove the original AVD folder? (Y/n): ");
+  printf("\nRemove the original AVD folder? (Y/n): ");
   scanf("%c", &decision);
 
   switch (decision)
     {
     case 'Y':
-      printf("The original AVD folder has been removed!\n");
+      printf("\nThe original AVD folder has been removed!\n");
       remove(avd_source_path);
       break;
 
     default:
-      printf("The original AVD folder has not been removed\n");
+      printf("\nThe original AVD folder has not been removed\n");
     }
-
-  rename("temporary_replacement_file.tmp", pathname);
+  // Rename and removing the temporary file
+  rename("temporary_replacement_file.tmp", pathname_without_extension);
+  remove("temporary_replacement_file.tmp");
 
   printf("\nAVD has been move to \"%s\"\n\n", destination_path);
 
